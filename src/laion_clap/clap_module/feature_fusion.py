@@ -177,11 +177,15 @@ class AFF(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x, residual):
+        original_dt = x.dtype
+        dt = next(iter(self.parameters())).dtype
+
         flag = False
         xa = x + residual
         if xa.size(0) == 1:
             xa = torch.cat([xa,xa],dim=0)
             flag = True
+        xa = xa.to(dt)
         xl = self.local_att(xa)
         xg = self.global_att(xa)
         xlg = xl + xg
@@ -189,5 +193,7 @@ class AFF(nn.Module):
         xo = 2 * x * wei + 2 * residual * (1 - wei)
         if flag:
             xo = xo[0].unsqueeze(0)
+
+        xo = xo.to(original_dt)
         return xo
 

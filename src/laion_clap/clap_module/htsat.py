@@ -130,6 +130,7 @@ class PatchEmbed(nn.Module):
                 else:
                     local_x = local_x[:,:,:,:TW]
                 
+                global_x = global_x.contiguous().to(local_x.dtype)
                 global_x[longer_idx] = self.fusion_model(global_x[longer_idx],local_x)
             x = global_x
         else:
@@ -140,6 +141,7 @@ class PatchEmbed(nn.Module):
         
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
+        x = x.half()
         x = self.norm(x)
         return x
 
@@ -685,6 +687,10 @@ class HTSAT_Swin_Transformer(nn.Module):
             freq_drop_width=8, freq_stripes_num=2) # 2 2
         self.bn0 = nn.BatchNorm2d(self.config.mel_bins)
 
+        # Make Paramaters Contiguous
+        self.spectrogram_extractor.stft.conv_real.weight = nn.Parameter(self.spectrogram_extractor.stft.conv_real.weight.contiguous())
+        self.spectrogram_extractor.stft.conv_imag.weight = nn.Parameter(self.spectrogram_extractor.stft.conv_imag.weight.contiguous())
+        self.logmel_extractor.melW = nn.Parameter(self.logmel_extractor.melW.contiguous())
 
         # split spctrogram into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -980,7 +986,6 @@ class HTSAT_Swin_Transformer(nn.Module):
 
 def create_htsat_model(audio_cfg, enable_fusion=False, fusion_type='None'):
     try:
-
         assert audio_cfg.model_name in ["tiny", "base", "large"], "model name for HTS-AT is wrong!"
         if audio_cfg.model_name == "tiny":
             model = HTSAT_Swin_Transformer(
