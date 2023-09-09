@@ -141,7 +141,11 @@ class PatchEmbed(nn.Module):
         
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
-        x = x.half()
+        
+        # Make sure the input is the right precision
+        dt = next(iter(self.parameters())).dtype
+        x = x.to(dt)
+
         x = self.norm(x)
         return x
 
